@@ -43,7 +43,7 @@ describe("Vertex< T, R > execute signature", () => {
     new Vertex({
       // @ts-expect-error - execute is expecting a string
       input: z.number(),
-      execute: (input: string) => {},
+      execute: (_: string) => {},
     });
 
     const resolvedInput: any[] = [];
@@ -60,52 +60,79 @@ describe("Vertex< T, R > execute signature", () => {
     expect(resolvedInput.at(0)).toBeUndefined();
   });
 
-  //   it("Should check parent node's outputs for child execute", async () => {
-  //     const parent = new Vertex(async (input: { value: number }) => {
-  //       return {
-  //         result: "test",
-  //         next: input.value,
-  //       } as const;
-  //     });
+  it("Should check parent node's outputs for child execute", async () => {
+    const parent = new Vertex({
+      input: z.object({
+        value: z.number(),
+      }),
+      execute: async (input: { value: number }) => {
+        return {
+          result: "test",
+          next: input.value,
+        } as const;
+      },
+    });
 
-  //     const child1 = new Vertex(async (input: string) => {});
+    const child1 = new Vertex({
+      input: z.string(),
+      execute: async (input: string) => {},
+    });
 
-  //     const child2 = new Vertex(
-  //       async (input: { result: "test"; next: number }) => {}
-  //     );
+    const child2 = new Vertex({
+      input: z.object({
+        result: z.literal("test"),
+        next: z.number(),
+      }),
+      execute: async (_: { result: "test"; next: number }) => {},
+    });
 
-  //     let child3ResolvedInput;
-  //     const child3 = new Vertex(async (input: { next: number }) => {
-  //       child3ResolvedInput = input;
-  //     });
+    let child3ResolvedInput;
+    const child3 = new Vertex({
+      input: z.object({
+        next: z.number()
+      }),
+      execute: async (input: { next: number }) => {
+        child3ResolvedInput = input;
+      },
+    });
 
-  //     // This should throw an error as the inputs don't match
-  //     // @ts-expect-error - child must accept the outputs of the parent
-  //     parent.addChild(child1);
+    // This should throw an error as the inputs don't match
+    // @ts-expect-error - child must accept the outputs of the parent
+    parent.addChild(child1);
 
-  //     // Working
-  //     parent.addChild(child2);
+    // Working
+    parent.addChild(child2);
 
-  //     // Even partial is fine
-  //     parent.addChild(child3);
-  //   });
+    // Even partial is fine
+    parent.addChild(child3);
+  });
 
-  //   it("Child should not contain polluted object", async () => {
-  //     const parent = new Vertex(async (input: { value: number }) => {
-  //       return {
-  //         result: "test",
-  //         next: input.value,
-  //       } as const;
-  //     });
+  it("Child should not contain polluted object", async () => {
+    const parent = new Vertex({
+      input: z.object({
+        next: z.number(),
+      }),
+      execute: async ({ next }) => {
+        return {
+          polluted: "test",
+          next,
+        } as const;
+      },
+    });
 
-  //     const resolvedInput: unknown[] = [];
-  //     const child = new Vertex(async (input: { next: number }) => {
-  //       resolvedInput.push(input);
-  //     });
+    const resolvedInput: unknown[] = [];
+    const child = new Vertex({
+      input: z.object({
+        next: z.number(),
+      }),
+      execute: async (input: { next: number }) => {
+        resolvedInput.push(input);
+      },
+    });
 
-  //     parent.addChild(child);
-  //     await parent.execute({ value: 67 });
-  //     await new Promise((resolve) => setTimeout(resolve, 5));
-  //     expect(resolvedInput.at(0)).not.toContain("result");
-  //   });
+    parent.addChild(child);
+    await parent.execute({ next: 67 });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(resolvedInput.at(0)).not.toContain("result");
+  });
 });

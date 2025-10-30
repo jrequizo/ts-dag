@@ -10,7 +10,7 @@ class Vertex<Schema extends z.ZodType<Input>, Output, Input = z.infer<Schema>> {
 }
 
 const a = new Vertex({
-  input: z.string(),
+  input: z.void(),
   execute: (input) => {},
 });
 

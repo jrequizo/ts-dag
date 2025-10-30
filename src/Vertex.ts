@@ -28,7 +28,7 @@ export interface VertexConstructor<
   Output,
   Input = z.infer<Schema>
 > {
-  input?: Schema;
+  input: Schema;
   execute: z.ZodType<unknown> extends Schema
     ? ExecuteWithoutInput<Output>
     : Execute<Input, Output>;

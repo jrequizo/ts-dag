@@ -8,10 +8,8 @@ describe("Vertex constructor tests", () => {
 
   it("Should enforce child inputs when parent adds child", () => {
     const parent = new Vertex({
-      input: z.object({
-        foo: z.string(),
-      }),
-      execute(input) {
+      input: z.void(),
+      execute() {
         return {
           bar: "",
         };
@@ -23,7 +21,7 @@ describe("Vertex constructor tests", () => {
         bar: z.string(),
         baz: z.number()
       }),
-      execute(input) {
+      execute(_) {
         return false
       },
     });
