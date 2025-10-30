@@ -75,7 +75,7 @@ describe("Vertex< T, R > execute signature", () => {
 
     const child1 = new Vertex({
       input: z.string(),
-      execute: async (input: string) => {},
+      execute: async (_: string) => {},
     });
 
     const child2 = new Vertex({
