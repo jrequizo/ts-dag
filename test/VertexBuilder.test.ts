@@ -1,17 +1,19 @@
 import z from "zod/v4";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it } from "vitest";
 
 import Vertex from "@/Vertex";
 
 describe("Vertex constructor tests", () => {
-  it("Should chain parent outputs to child", () => {
+    // it("Should chain parent outputs to child", () => {
+
+  it("Should enforce child inputs when parent adds child", () => {
     const parent = new Vertex({
       input: z.object({
         foo: z.string(),
       }),
       execute(input) {
         return {
-          bar: z.string(),
+          bar: "",
         };
       },
     });
@@ -19,10 +21,14 @@ describe("Vertex constructor tests", () => {
     const child = new Vertex({
       input: z.object({
         bar: z.string(),
+        baz: z.number()
       }),
-      execute(input) {},
+      execute(input) {
+        return false
+      },
     });
 
+    // @ts-expect-error - 'baz' required but not supplied by parent output
     parent.addChild(child);
   });
 });

@@ -218,14 +218,16 @@ describe("Vertex can add children", () => {
     ]);
   });
 
-  // it("Should have no cyclic dependencies", () => {
-  const a = new Vertex({ input: z.any(), execute: vi.fn() });
-  const b = new Vertex({ input: z.any(), execute: vi.fn() });
-  const c = new Vertex({ input: z.any(), execute: vi.fn() });
+  it("Should have no cyclic dependencies", () => {
+    const a = new Vertex({ input: z.any(), execute: vi.fn() });
+    const b = new Vertex({ input: z.any(), execute: vi.fn() });
+    const c = new Vertex({ input: z.any(), execute: vi.fn() });
 
-  a.addChild(b);
-  b.addChild(c);
-  expect(() => c.addChild(a)).toThrowError(VertexError);
-  expect(() => c.addChild(a)).toThrow("Adding this edge would create a cycle.");
-  // })
+    a.addChild(b);
+    b.addChild(c);
+    expect(() => c.addChild(a)).toThrowError(VertexError);
+    expect(() => c.addChild(a)).toThrow(
+      "Adding this edge would create a cycle."
+    );
+  });
 });

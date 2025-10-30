@@ -34,21 +34,21 @@ describe("Vertex< T, R > execute signature", () => {
     });
 
     // `v` should be Vertex<number, string>
-    expectTypeOf(v).toEqualTypeOf<Vertex<unknown, string, z.ZodNumber>>();
+    expectTypeOf(v).toEqualTypeOf<Vertex<z.ZodNumber, string>>();
     expectTypeOf(v.execute).parameters.toEqualTypeOf<[number]>();
     expectTypeOf(v.execute).returns.resolves.toEqualTypeOf<string>();
   });
 
   it("rejects mismatched generic arguments", async () => {
     new Vertex({
+      // @ts-expect-error - execute is expecting a string
       input: z.number(),
-      // @ts-expect-error - execute must accept number
       execute: (input: string) => {},
     });
 
     const resolvedInput: any[] = [];
     const vertex = new Vertex({
-      // @ts-expect-error - check if the input has anything
+      input: z.void(),
       execute: (input) => {
         resolvedInput.push(input);
         return "";
@@ -57,7 +57,7 @@ describe("Vertex< T, R > execute signature", () => {
 
     // @ts-expect-error - execute result must be string
     const result: number = await vertex.execute();
-    expect(resolvedInput[0]).toBeUndefined();
+    expect(resolvedInput.at(0)).toBeUndefined();
   });
 
   //   it("Should check parent node's outputs for child execute", async () => {
