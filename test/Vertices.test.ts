@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 
 import Vertex from "@/Vertex";
 import VertexError from "@/VertexError";
+import z from "zod/v4";
 
 /**
  * class for dag
@@ -77,8 +78,8 @@ function deferred<T = void>() {
 
 describe("Vertex can add children", () => {
   it("Should return the children when added", () => {
-    const a = new Vertex(async () => {});
-    const b = new Vertex(async () => {});
+    const a = new Vertex({ input: z.any(), execute: vi.fn() });
+    const b = new Vertex({ input: z.any(), execute: vi.fn() });
 
     a.addChild(b);
     const children = a.getChildren();
@@ -89,7 +90,7 @@ describe("Vertex can add children", () => {
   });
 
   it("Should throw an error when trying to add itself", () => {
-    const vertex = new Vertex(async () => {});
+    const vertex = new Vertex({ input: z.any(), execute: vi.fn() });
     expect(() => vertex.addChild(vertex)).toThrowError(VertexError);
     expect(() => vertex.addChild(vertex)).toThrow(
       "Cannot add self as a child."
@@ -97,8 +98,8 @@ describe("Vertex can add children", () => {
   });
 
   it("Should throw an error when trying to add duplicate child", () => {
-    const a = new Vertex(async () => {});
-    const b = new Vertex(async () => {});
+    const a = new Vertex({ input: z.any(), execute: vi.fn() });
+    const b = new Vertex({ input: z.any(), execute: vi.fn() });
     a.addChild(b);
 
     expect(() => a.addChild(b)).toThrowError(VertexError);
@@ -106,8 +107,8 @@ describe("Vertex can add children", () => {
   });
 
   it("Should contain parent symbols", () => {
-    const a = new Vertex(async () => {});
-    const b = new Vertex(async () => {});
+    const a = new Vertex({ input: z.any(), execute: vi.fn() });
+    const b = new Vertex({ input: z.any(), execute: vi.fn() });
 
     a.addChild(b);
     const bKeys = new Set(b.parents);
@@ -117,13 +118,14 @@ describe("Vertex can add children", () => {
   });
 
   it("Should run the execute function when called", async () => {
-    const func = vi.fn();
+    const execute = vi.fn();
+    const constructor = { input: z.any(), execute };
     const input = { test: "foo" };
 
-    const a = new Vertex(func);
+    const a = new Vertex(constructor);
     await a.execute(input);
 
-    expect(func).toHaveBeenCalledExactlyOnceWith(input);
+    expect(execute).toHaveBeenCalledExactlyOnceWith(input);
   });
 
   it("runs children only after parent resolves (no timeouts)", async () => {
@@ -138,7 +140,7 @@ describe("Vertex can add children", () => {
     const aInput = { test1: "foo" };
     const aOutput = { test2: "bar " };
     const bOutput = { test3: "baz" };
-    const cInput =  { ...aOutput, ...bOutput };
+    const cInput = { ...aOutput, ...bOutput };
 
     const calls: string[] = [];
 
@@ -165,9 +167,9 @@ describe("Vertex can add children", () => {
       calls.push("c:end");
     });
 
-    const a = new Vertex(aFunc);
-    const b = new Vertex(bFunc);
-    const c = new Vertex(cFunc);
+    const a = new Vertex({ input: z.any(), execute: aFunc });
+    const b = new Vertex({ input: z.any(), execute: bFunc });
+    const c = new Vertex({ input: z.any(), execute: cFunc });
 
     a.addChild(b);
     b.addChild(c);
@@ -217,9 +219,9 @@ describe("Vertex can add children", () => {
   });
 
   // it("Should have no cyclic dependencies", () => {
-  const a = new Vertex(async () => {});
-  const b = new Vertex(async () => {});
-  const c = new Vertex(async () => {});
+  const a = new Vertex({ input: z.any(), execute: vi.fn() });
+  const b = new Vertex({ input: z.any(), execute: vi.fn() });
+  const c = new Vertex({ input: z.any(), execute: vi.fn() });
 
   a.addChild(b);
   b.addChild(c);

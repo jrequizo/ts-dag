@@ -15,5 +15,8 @@
     "vite": "^7.1.7",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.0.4"
+  },
+  "dependencies": {
+    "zod": "^4.1.12"
   }
 }

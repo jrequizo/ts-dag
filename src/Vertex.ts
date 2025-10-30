@@ -1,9 +1,14 @@
+import z from "zod/v4";
 import VertexError from "./VertexError";
 
 /**
  *
  */
-type Execute<T, R> = (input: T) => Promise<R>;
+type Execute<Input, Output> =
+  | ((input: Input) => Promise<Output>)
+  | ((input: Input) => Output);
+
+type ExecuteWithoutInput<Output> = (() => Promise<Output>) | (() => Output);
 
 /**
  * TODOs:
@@ -13,14 +18,22 @@ type Execute<T, R> = (input: T) => Promise<R>;
  * [ ] Use Event emitter
  */
 
-type AnyVertex = Vertex<any, any>;
+type AnyVertex = Vertex<any, any, any>;
+
+interface VertexConstructor<Input, Output, Schema extends z.ZodSchema<Input>> {
+  input?: Schema;
+  execute: z.ZodType<unknown> extends Schema
+    ? ExecuteWithoutInput<Output>
+    : Execute<z.infer<Schema>, Output>;
+}
 
 /**
  *
  */
-export default class Vertex<T, R> {
-  execute: Execute<T, R>;
-
+export default class Vertex<Input, Output, Schema extends z.ZodSchema<Input>> {
+  execute: z.ZodType<unknown> extends Schema
+    ? ExecuteWithoutInput<Output>
+    : Execute<z.infer<Schema>, Output>;
   /**
    * @internal
    */
@@ -36,31 +49,51 @@ export default class Vertex<T, R> {
   /**
    * @internal
    */
-  private $children: Set<Vertex<unknown, unknown>> = new Set();
+  private $children: Set<AnyVertex> = new Set();
 
-  constructor(execute: Execute<T, R>) {
+  constructor(builder: VertexConstructor<Input, Output, Schema>) {
     // Modify execute to check and propagate execution
-    this.execute = async (input: T) => {
-      // console.log(`Executing... ${JSON.stringify(input)}`);
-      const result = await execute(input);
-      // console.log(`Result: ${JSON.stringify(result)}`);
+    if (builder.input) {
+      this.execute = (async (input: z.infer<Schema>): Promise<Output> => {
+        // console.log(`Executing... ${JSON.stringify(input)}`);
+        const result = await builder.execute(input);
+        // console.log(`Result: ${JSON.stringify(result)}`);
 
-      // console.log("Updating children");
-      this.$children.forEach((child) => {
-        child.updateParentStatus(this.key, result);
-      });
+        // console.log("Updating children");
+        this.$children.forEach((child) => {
+          child.updateParentStatus(this.key, result);
+        });
 
-      // We would end up running all the child elements first...
-      // this.propagateCompletion(this.key, result);
-      return result;
-    };
+        // We would end up running all the child elements first...
+        // this.propagateCompletion(this.key, result);
+        return result;
+      }) as any;
+    } else {
+      this.execute = (async (): Promise<Output> => {
+        // console.log(`Executing... ${JSON.stringify(input)}`);
+        // Funky as!
+        const result = await builder.execute(undefined as any);
+        // console.log(`Result: ${JSON.stringify(result)}`);
+
+        // console.log("Updating children");
+        this.$children.forEach((child) => {
+          child.updateParentStatus(this.key, result);
+        });
+
+        // We would end up running all the child elements first...
+        // this.propagateCompletion(this.key, result);
+        return result;
+      }) as ExecuteWithoutInput<Output>;
+    }
   }
 
   /**
    * Adds a {@link Vertex} as a child of this for execution after this vertex.
    * @param vertex
    */
-  addChild(vertex: Vertex<R, unknown>) {
+  addChild<ChildOutput, ChildSchema extends z.ZodSchema<z.infer<Output>>>(
+    vertex: Vertex<z.infer<Output>, ChildOutput, ChildSchema>
+  ) {
     // @ts-expect-error
     if (this === vertex) {
       throw new VertexError("Cannot add self as a child.");
@@ -71,7 +104,7 @@ export default class Vertex<T, R> {
       throw new VertexError("Adding this edge would create a cycle.");
     }
 
-    this.$children.add(vertex);    
+    this.$children.add(vertex);
     vertex.addParent(this.key);
     // console.log("Adding child vertex", vertex);
   }
@@ -102,9 +135,11 @@ export default class Vertex<T, R> {
     return Object.getOwnPropertySymbols(this.$parentExecutionStatus);
   }
 
-
   /** DFS: is there a path from `this` to `target`? */
-  private hasPathTo(target: AnyVertex, visited = new Set<AnyVertex>()): boolean {
+  private hasPathTo(
+    target: AnyVertex,
+    visited = new Set<AnyVertex>()
+  ): boolean {
     if (this === target) return true;
     if (visited.has(this)) return false;
     visited.add(this);
@@ -133,7 +168,9 @@ export default class Vertex<T, R> {
 
     // Check if all '$parentExecutionStatus' has completed.
     const keys = Object.getOwnPropertySymbols(this.$parentExecutionStatus);
-    const hasExecuted = keys.every((key) => this.$parentExecutionStatus[key] === true);
+    const hasExecuted = keys.every(
+      (key) => this.$parentExecutionStatus[key] === true
+    );
     // console.log(keys);
     // console.log(hasExecuted)
     if (hasExecuted) {
